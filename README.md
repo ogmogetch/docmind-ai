@@ -76,17 +76,6 @@ src/
     PdfPreview.tsx
 ```
 
-## Roadmap
-
-- [x] Étape 1 : Setup + upload + extraction texte
-- [ ] Étape 2 : Résumé Claude
-- [ ] Étape 3 : Chunking + embeddings + pgvector
-- [ ] Étape 4 : Recherche sémantique
-- [ ] Étape 5 : Chat streaming + sources
-- [ ] Étape 6 : UI côte à côte
-- [ ] Étape 7 : Cas limites
-- [ ] Étape 8 : Déploiement
-
 ## Licence
 
 MIT
