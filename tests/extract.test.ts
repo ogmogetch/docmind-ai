@@ -19,9 +19,14 @@ describe("isSupported", () => {
     expect(isSupported("", "contract.pdf")).toBe(true);
   });
 
-  it("rejects unsupported types", () => {
+  it("rejects clearly unsupported binary types", () => {
     expect(isSupported("image/png", "shot.png")).toBe(false);
-    expect(isSupported("", "audio.mp3")).toBe(false);
+    expect(isSupported("audio/mpeg", "song.mp3")).toBe(false);
+  });
+
+  it("accepts octet-stream and lets extract decide", () => {
+    expect(isSupported("application/octet-stream", "notes")).toBe(true);
+    expect(isSupported("application/octet-stream", "report.pdf")).toBe(true);
   });
 });
 

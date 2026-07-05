@@ -15,23 +15,35 @@ const MD_MIME = "text/markdown";
 
 export const SUPPORTED_MIME_TYPES = [PDF_MIME, DOCX_MIME, TXT_MIME, MD_MIME];
 
+const TEXT_LIKE_EXTENSIONS = [".txt", ".md", ".markdown", ".log", ".csv", ".rtf"];
+const OCTET_STREAM = "application/octet-stream";
+
 export function isSupported(mimeType: string, filename: string): boolean {
   if (SUPPORTED_MIME_TYPES.includes(mimeType)) return true;
   const lower = filename.toLowerCase();
-  return (
+  if (
     lower.endsWith(".pdf") ||
-    lower.endsWith(".docx") ||
-    lower.endsWith(".txt") ||
-    lower.endsWith(".md")
-  );
+    lower.endsWith(".docx")
+  ) {
+    return true;
+  }
+  if (TEXT_LIKE_EXTENSIONS.some((ext) => lower.endsWith(ext))) return true;
+  // Some browsers report application/octet-stream or an empty mime type
+  // for legit PDF/text files. Accept and let extract() decide.
+  if (!mimeType || mimeType === OCTET_STREAM) return true;
+  if (mimeType.startsWith("text/")) return true;
+  return false;
 }
 
-function guessMime(mimeType: string, filename: string): string {
+function guessMime(mimeType: string, filename: string, buffer?: Buffer): string {
   if (SUPPORTED_MIME_TYPES.includes(mimeType)) return mimeType;
   const lower = filename.toLowerCase();
   if (lower.endsWith(".pdf")) return PDF_MIME;
   if (lower.endsWith(".docx")) return DOCX_MIME;
-  if (lower.endsWith(".md")) return MD_MIME;
+  if (lower.endsWith(".md") || lower.endsWith(".markdown")) return MD_MIME;
+  if (buffer && buffer.length >= 4 && buffer.subarray(0, 4).toString() === "%PDF") {
+    return PDF_MIME;
+  }
   return TXT_MIME;
 }
 
@@ -40,7 +52,7 @@ export async function extract(
   mimeType: string,
   filename: string,
 ): Promise<ExtractedDoc> {
-  const mime = guessMime(mimeType, filename);
+  const mime = guessMime(mimeType, filename, buffer);
 
   if (mime === PDF_MIME) {
     const { default: pdfParse } = await import("pdf-parse");
