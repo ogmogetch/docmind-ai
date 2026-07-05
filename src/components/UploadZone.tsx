@@ -23,7 +23,7 @@ export default function UploadZone({ onUploaded }: Props) {
         const res = await fetch("/api/upload", { method: "POST", body: form });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error ?? "Erreur upload");
-        onUploaded(data as UploadedDoc);
+        onUploaded({ ...data, file } as UploadedDoc);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Erreur upload");
       } finally {
