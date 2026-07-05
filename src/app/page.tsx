@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import UploadZone from "@/components/UploadZone";
+import Chat from "@/components/Chat";
 
 export type UploadedDoc = {
   documentId: string;
@@ -72,49 +73,53 @@ export default function HomePage() {
         </div>
       </header>
 
-      <section className="mx-auto max-w-3xl px-6 py-8">
+      <section className="mx-auto max-w-6xl px-6 py-8">
         {!doc ? (
           <UploadZone onUploaded={setDoc} />
         ) : (
-          <div className="space-y-6">
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <h2 className="text-lg font-semibold text-slate-900">
-                {doc.filename}
-              </h2>
-              <p className="mt-1 text-sm text-slate-500">
-                {doc.chunkCount} chunks
-                {doc.pageCount ? ` · ${doc.pageCount} pages` : ""}
-              </p>
-            </div>
-
-            <div className="rounded-2xl border border-brand-100 bg-brand-50 p-6 shadow-sm">
-              <p className="text-xs font-medium uppercase tracking-wide text-brand-700">
-                Résumé automatique
-              </p>
-              {summaryLoading && (
-                <p className="mt-3 text-sm text-slate-600">
-                  Génération du résumé…
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
+            <aside className="space-y-4">
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <h2 className="text-sm font-semibold text-slate-900">
+                  {doc.filename}
+                </h2>
+                <p className="mt-1 text-xs text-slate-500">
+                  {doc.chunkCount} chunks
+                  {doc.pageCount ? ` · ${doc.pageCount} pages` : ""}
                 </p>
-              )}
-              {summaryError && (
-                <p className="mt-3 text-sm text-red-700">{summaryError}</p>
-              )}
-              {summary && (
-                <p className="mt-3 whitespace-pre-wrap text-sm text-slate-800">
-                  {summary}
-                </p>
-              )}
-            </div>
+              </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                Aperçu du texte extrait
-              </p>
-              <pre className="mt-2 max-h-[50vh] overflow-y-auto whitespace-pre-wrap rounded-lg bg-slate-50 p-4 text-xs leading-relaxed text-slate-700">
-                {doc.preview}
-                {doc.preview.length >= 500 && "…"}
-              </pre>
-            </div>
+              <div className="rounded-2xl border border-brand-100 bg-brand-50 p-5 shadow-sm">
+                <p className="text-xs font-medium uppercase tracking-wide text-brand-700">
+                  Résumé
+                </p>
+                {summaryLoading && (
+                  <p className="mt-3 text-sm text-slate-600">
+                    Génération du résumé…
+                  </p>
+                )}
+                {summaryError && (
+                  <p className="mt-3 text-sm text-red-700">{summaryError}</p>
+                )}
+                {summary && (
+                  <p className="mt-3 whitespace-pre-wrap text-sm text-slate-800">
+                    {summary}
+                  </p>
+                )}
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                  Aperçu du texte
+                </p>
+                <pre className="mt-2 max-h-[40vh] overflow-y-auto whitespace-pre-wrap rounded-lg bg-slate-50 p-3 text-xs leading-relaxed text-slate-700">
+                  {doc.preview}
+                  {doc.preview.length >= 500 && "…"}
+                </pre>
+              </div>
+            </aside>
+
+            <Chat documentId={doc.documentId} filename={doc.filename} />
           </div>
         )}
       </section>
