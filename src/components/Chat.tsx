@@ -109,7 +109,7 @@ export default function Chat({ documentId, filename }: Props) {
   }
 
   return (
-    <section className="flex h-[80vh] flex-col rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <section className="flex h-[85vh] flex-col rounded-2xl border border-slate-200 bg-white shadow-sm">
       <div className="border-b border-slate-200 px-5 py-3">
         <h2 className="text-sm font-semibold text-slate-900">
           Discuter avec {filename}
