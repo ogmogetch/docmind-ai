@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getClaude, CLAUDE_MODEL } from "@/lib/claude";
+import { getLlm } from "@/lib/llm";
 import { buildContext, retrieve, type RetrievedChunk } from "@/lib/rag";
 
 export const runtime = "nodejs";
@@ -76,27 +76,21 @@ Règles impératives :
 - Cite le numéro d'extrait entre crochets quand c'est pertinent, ex : [Extrait 2].
 - Reste concis, en français.`;
 
-        const claude = getClaude();
-        const messageStream = claude.messages.stream({
-          model: CLAUDE_MODEL,
-          max_tokens: 800,
-          system,
-          messages: [
-            ...history.map((m) => ({ role: m.role, content: m.content })),
-            {
-              role: "user",
-              content: `Extraits du document :\n\n${context}\n\n---\n\nQuestion : ${question}`,
-            },
-          ],
-        });
+        const llm = getLlm();
+        const messages = [
+          ...history.map((m) => ({ role: m.role, content: m.content })),
+          {
+            role: "user" as const,
+            content: `Extraits du document :\n\n${context}\n\n---\n\nQuestion : ${question}`,
+          },
+        ];
 
-        for await (const event of messageStream) {
-          if (
-            event.type === "content_block_delta" &&
-            event.delta.type === "text_delta"
-          ) {
-            send({ type: "delta", text: event.delta.text });
-          }
+        for await (const delta of llm.stream({
+          system,
+          messages,
+          maxTokens: 800,
+        })) {
+          send({ type: "delta", text: delta });
         }
 
         send({ type: "done" });
