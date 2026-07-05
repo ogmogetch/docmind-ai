@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabase } from "@/lib/supabase";
-import { getClaude, CLAUDE_MODEL } from "@/lib/claude";
+import { getLlm } from "@/lib/llm";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -33,34 +33,27 @@ export async function POST(req: NextRequest) {
     }
 
     const truncated = doc.raw_text.slice(0, MAX_INPUT_CHARS);
+    const llm = getLlm();
 
-    const claude = getClaude();
-    const response = await claude.messages.create({
-      model: CLAUDE_MODEL,
-      max_tokens: 600,
+    const summary = await llm.complete({
+      system:
+        "Tu es un assistant qui résume des documents. Réponds toujours en français. N'invente rien, reste strictement dans le contenu fourni.",
       messages: [
         {
           role: "user",
-          content: `Tu es un assistant qui résume des documents. Voici le document "${doc.filename}".
+          content: `Voici le document "${doc.filename}".
 
-Rédige un résumé clair et structuré en français (5 à 8 phrases) qui couvre :
+Rédige un résumé clair et structuré (5 à 8 phrases) qui couvre :
 - de quoi parle le document
 - les points clés
 - les informations chiffrées importantes s'il y en a
-
-N'invente rien. Reste strictement dans le contenu fourni.
 
 --- DOCUMENT ---
 ${truncated}`,
         },
       ],
+      maxTokens: 600,
     });
-
-    const summary = response.content
-      .filter((block) => block.type === "text")
-      .map((block) => (block.type === "text" ? block.text : ""))
-      .join("\n")
-      .trim();
 
     await supabase
       .from("documents")
