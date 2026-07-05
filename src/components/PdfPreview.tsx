@@ -12,17 +12,22 @@ type Props = {
 };
 
 export default function PdfPreview({ file }: Props) {
-  const objectUrl = useMemo(() => URL.createObjectURL(file), [file]);
+  const [data, setData] = useState<Uint8Array | null>(null);
   const [pageCount, setPageCount] = useState<number>(0);
   const [page, setPage] = useState(1);
   const [width, setWidth] = useState(600);
 
   useEffect(() => {
-    return () => URL.revokeObjectURL(objectUrl);
-  }, [objectUrl]);
-
-  useEffect(() => {
+    let cancelled = false;
+    setData(null);
+    setPageCount(0);
     setPage(1);
+    file.arrayBuffer().then((buf) => {
+      if (!cancelled) setData(new Uint8Array(buf));
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [file]);
 
   useEffect(() => {
@@ -34,6 +39,8 @@ export default function PdfPreview({ file }: Props) {
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
   }, []);
+
+  const fileProp = useMemo(() => (data ? { data } : null), [data]);
 
   return (
     <div
@@ -65,27 +72,33 @@ export default function PdfPreview({ file }: Props) {
         )}
       </div>
       <div className="flex-1 overflow-auto bg-slate-100 p-3">
-        <Document
-          file={objectUrl}
-          onLoadSuccess={({ numPages }) => setPageCount(numPages)}
-          loading={
-            <p className="p-6 text-center text-sm text-slate-500">
-              Chargement du PDF…
-            </p>
-          }
-          error={
-            <p className="p-6 text-center text-sm text-red-600">
-              Impossible d'afficher ce PDF.
-            </p>
-          }
-        >
-          <Page
-            pageNumber={page}
-            width={width}
-            renderAnnotationLayer={false}
-            renderTextLayer={false}
-          />
-        </Document>
+        {fileProp ? (
+          <Document
+            file={fileProp}
+            onLoadSuccess={({ numPages }) => setPageCount(numPages)}
+            loading={
+              <p className="p-6 text-center text-sm text-slate-500">
+                Chargement du PDF…
+              </p>
+            }
+            error={
+              <p className="p-6 text-center text-sm text-red-600">
+                Impossible d'afficher ce PDF.
+              </p>
+            }
+          >
+            <Page
+              pageNumber={page}
+              width={width}
+              renderAnnotationLayer={false}
+              renderTextLayer={false}
+            />
+          </Document>
+        ) : (
+          <p className="p-6 text-center text-sm text-slate-500">
+            Lecture du fichier…
+          </p>
+        )}
       </div>
     </div>
   );
