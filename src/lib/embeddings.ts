@@ -2,7 +2,13 @@ import type { FeatureExtractionPipeline } from "@xenova/transformers";
 
 let pipelinePromise: Promise<FeatureExtractionPipeline> | null = null;
 
-const MODEL_ID = process.env.EMBEDDING_MODEL ?? "Xenova/all-MiniLM-L6-v2";
+// paraphrase-multilingual-MiniLM-L12-v2: 384-dim, covers 50+ languages
+// including French. Much better recall on non-English content than
+// all-MiniLM-L6-v2 while keeping the same vector dimension (schema
+// stays compatible).
+const MODEL_ID =
+  process.env.EMBEDDING_MODEL ??
+  "Xenova/paraphrase-multilingual-MiniLM-L12-v2";
 export const EMBEDDING_DIMENSIONS = 384;
 
 async function getPipeline(): Promise<FeatureExtractionPipeline> {

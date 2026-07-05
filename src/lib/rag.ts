@@ -11,6 +11,7 @@ export type RetrievedChunk = {
 export type RetrievalOptions = {
   topK?: number;
   minSimilarity?: number;
+  fallbackTopK?: number;
 };
 
 export async function retrieve(
@@ -18,8 +19,9 @@ export async function retrieve(
   question: string,
   options: RetrievalOptions = {},
 ): Promise<RetrievedChunk[]> {
-  const topK = options.topK ?? 5;
-  const minSimilarity = options.minSimilarity ?? 0.25;
+  const topK = options.topK ?? 6;
+  const minSimilarity = options.minSimilarity ?? 0.15;
+  const fallbackTopK = options.fallbackTopK ?? 3;
 
   const queryEmbedding = await embed(question);
   const supabase = getSupabase();
@@ -42,14 +44,21 @@ export async function retrieve(
     similarity: number;
   }>;
 
-  return rows
-    .filter((r) => r.similarity >= minSimilarity)
-    .map((r) => ({
-      chunkIndex: r.chunk_index,
-      page: r.page,
-      content: r.content,
-      similarity: r.similarity,
-    }));
+  const filtered = rows.filter((r) => r.similarity >= minSimilarity);
+
+  // Vague or reformulated questions may not clear the similarity floor
+  // even though the answer is right there. Fall back to the best few
+  // chunks so the LLM has a chance to answer instead of blanket
+  // "not in the document".
+  const chosen =
+    filtered.length > 0 ? filtered : rows.slice(0, fallbackTopK);
+
+  return chosen.map((r) => ({
+    chunkIndex: r.chunk_index,
+    page: r.page,
+    content: r.content,
+    similarity: r.similarity,
+  }));
 }
 
 export function buildContext(chunks: RetrievedChunk[]): string {

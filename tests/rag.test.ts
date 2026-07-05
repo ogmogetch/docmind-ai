@@ -76,6 +76,25 @@ describe("retrieve", () => {
     expect(chunks).toEqual([]);
   });
 
+  it("falls back to top rows when nothing clears the similarity floor", async () => {
+    rpc.mockResolvedValueOnce({
+      data: [
+        { id: 1, chunk_index: 0, page: 1, content: "weak-1", similarity: 0.10 },
+        { id: 2, chunk_index: 1, page: 1, content: "weak-2", similarity: 0.09 },
+        { id: 3, chunk_index: 2, page: 2, content: "weak-3", similarity: 0.05 },
+      ],
+      error: null,
+    });
+    const { retrieve } = await import("@/lib/rag");
+    const chunks = await retrieve("doc-uuid", "question", {
+      minSimilarity: 0.9,
+      fallbackTopK: 2,
+    });
+    expect(chunks).toHaveLength(2);
+    expect(chunks[0].content).toBe("weak-1");
+    expect(chunks[1].content).toBe("weak-2");
+  });
+
   it("throws when the RPC returns an error", async () => {
     rpc.mockResolvedValueOnce({
       data: null,

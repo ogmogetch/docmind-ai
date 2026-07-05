@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { getLlm } from "@/lib/llm";
+import { getSupabase } from "@/lib/supabase";
 import { buildContext, retrieve, type RetrievedChunk } from "@/lib/rag";
 
 export const runtime = "nodejs";
@@ -45,6 +46,13 @@ export async function POST(req: NextRequest) {
         controller.enqueue(encoder.encode(sseEvent(payload)));
 
       try {
+        const supabase = getSupabase();
+        const { data: docRow } = await supabase
+          .from("documents")
+          .select("summary")
+          .eq("id", documentId)
+          .single();
+
         const chunks: RetrievedChunk[] = await retrieve(documentId, question);
 
         send({
@@ -57,7 +65,7 @@ export async function POST(req: NextRequest) {
           })),
         });
 
-        if (chunks.length === 0) {
+        if (chunks.length === 0 && !docRow?.summary) {
           for (const word of NO_CONTEXT_ANSWER.split(" ")) {
             send({ type: "delta", text: word + " " });
           }
@@ -67,12 +75,18 @@ export async function POST(req: NextRequest) {
         }
 
         const context = buildContext(chunks);
+        const summaryBlock = docRow?.summary
+          ? `Résumé du document (contexte général) :\n${docRow.summary}\n\n`
+          : "";
 
-        const system = `Tu es un assistant qui répond STRICTEMENT à partir des extraits du document fournis.
+        const system = `Tu es un assistant qui répond STRICTEMENT à partir du document fourni.
+
+Le contexte contient un résumé du document et des extraits jugés les plus pertinents pour la question.
 
 Règles impératives :
-- Réponds uniquement avec les informations présentes dans les extraits.
-- Si l'information n'y figure pas, réponds exactement : "${NO_CONTEXT_ANSWER}".
+- Utilise en priorité les extraits ; le résumé sert de contexte global.
+- N'ajoute jamais d'informations qui ne sont pas dans le document.
+- Si l'information n'y figure vraiment pas, réponds exactement : "${NO_CONTEXT_ANSWER}".
 - Cite le numéro d'extrait entre crochets quand c'est pertinent, ex : [Extrait 2].
 - Reste concis, en français.`;
 
@@ -81,7 +95,9 @@ Règles impératives :
           ...history.map((m) => ({ role: m.role, content: m.content })),
           {
             role: "user" as const,
-            content: `Extraits du document :\n\n${context}\n\n---\n\nQuestion : ${question}`,
+            content: `${summaryBlock}${
+              context ? `Extraits :\n\n${context}\n\n---\n\n` : ""
+            }Question : ${question}`,
           },
         ];
 
