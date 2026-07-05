@@ -29,6 +29,13 @@ create index if not exists document_chunks_embedding_idx
   on document_chunks using ivfflat (embedding vector_cosine_ops)
   with (lists = 100);
 
+-- These tables are only touched from the Next.js backend using the
+-- SUPABASE_SERVICE_ROLE_KEY. There is no direct client access, so RLS
+-- is intentionally disabled here. If you later expose read access to
+-- authenticated users, re-enable RLS and add the appropriate policies.
+alter table documents disable row level security;
+alter table document_chunks disable row level security;
+
 -- Cosine similarity search RPC.
 -- Returns the top_k most similar chunks for a document, ordered by similarity desc.
 create or replace function match_document_chunks(

@@ -24,7 +24,9 @@ export async function POST(req: NextRequest) {
     }
     if (!isSupported(file.type, file.name)) {
       return NextResponse.json(
-        { error: `Type non supporté : ${file.type || file.name}` },
+        {
+          error: `Type non supporté : ${file.name} (${file.type || "type inconnu"}). Formats acceptés : PDF, DOCX, TXT, MD.`,
+        },
         { status: 415 },
       );
     }
