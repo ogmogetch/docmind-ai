@@ -41,3 +41,6 @@ tmp/
 
 # private project memory
 CLAUDE.md
+
+# tsc incremental
+tsconfig.tsbuildinfo
