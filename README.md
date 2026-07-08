@@ -16,8 +16,8 @@ Démontre une compétence recherchée en 2026 : **Retrieval-Augmented Generation
 
 ## Stack
 
-- Next.js 15 (App Router) + TypeScript + Tailwind CSS
-- Anthropic Claude API (streaming)
+- Next.js 14 (App Router) + TypeScript + Tailwind CSS
+- LLM au choix : **Groq** (Llama 3.3 70B, gratuit, par défaut) ou **Anthropic Claude** (payant, optionnel)
 - `@xenova/transformers` (`all-MiniLM-L6-v2`) pour les embeddings locaux — 384 dimensions
 - Supabase + pgvector pour le stockage vectoriel
 - `pdf-parse` et `mammoth` pour l'extraction
@@ -37,11 +37,14 @@ Puis http://localhost:3000
 
 ### Variables d'environnement
 
-| Variable                    | Description                                             |
-| --------------------------- | ------------------------------------------------------- |
-| `ANTHROPIC_API_KEY`         | Clé API Claude (console.anthropic.com)                  |
-| `SUPABASE_URL`              | URL du projet Supabase                                  |
-| `SUPABASE_SERVICE_ROLE_KEY` | Clé service role (backend uniquement, jamais exposée)   |
+| Variable                    | Description                                                            |
+| --------------------------- | ---------------------------------------------------------------------- |
+| `GROQ_API_KEY`              | Clé Groq (console.groq.com/keys) — provider par défaut, tier gratuit   |
+| `GROQ_MODEL`                | Modèle Groq, défaut `llama-3.3-70b-versatile`                          |
+| `LLM_PROVIDER`              | `groq` (défaut) ou `anthropic`                                         |
+| `ANTHROPIC_API_KEY`         | Requis uniquement si `LLM_PROVIDER=anthropic`                          |
+| `SUPABASE_URL`              | URL du projet Supabase                                                 |
+| `SUPABASE_SERVICE_ROLE_KEY` | Clé service role (backend uniquement, jamais exposée)                  |
 
 ### Setup Supabase / pgvector
 
