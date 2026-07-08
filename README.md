@@ -1,84 +1,174 @@
 # DocMind
 
-Application d'analyse de documents alimentée par IA. Dépose un PDF ou un fichier texte, obtiens un résumé automatique, puis discute avec le document dans un chat qui cite ses sources.
+Chat with your documents. Upload a PDF, DOCX or TXT, get an automatic summary, then ask questions and receive answers grounded in the source — with page-level citations.
 
-## Pourquoi ce projet
+Built as a full end-to-end **Retrieval-Augmented Generation (RAG)** pipeline: local embeddings, pgvector search, and streamed LLM responses.
 
-Démontre une compétence recherchée en 2026 : **Retrieval-Augmented Generation (RAG)**. Ce n'est pas un simple wrapper autour d'une API. Le pipeline complet est ici :
+---
 
-1. Extraction du texte (PDF, TXT, DOCX)
-2. Découpage en chunks avec chevauchement
-3. Génération d'**embeddings vectoriels en local** avec `@xenova/transformers` (aucune dépendance à une API tierce pour les embeddings — le modèle tourne dans le processus Node)
-4. Stockage dans **pgvector** sur Supabase
-5. Recherche sémantique (cosine similarity) sur la question
-6. Prompt contextualisé envoyé à Claude en streaming
-7. Réponses sourcées (numéro de page / passage exact)
+## Features
 
-## Stack
+- **Multi-format ingestion** — PDF, DOCX, TXT
+- **Automatic summary** on upload
+- **Grounded chat** — answers cite the exact chunk (page + passage) they came from
+- **Streamed responses** — token-by-token, no blocking wait
+- **Local embeddings** — no third-party embeddings API; the model runs in the Node process
+- **Provider-agnostic LLM** — Groq (free tier, default) or Anthropic Claude
+- **Anti-hallucination guardrail** — when no relevant chunk is retrieved, the app says so instead of inventing
 
-- Next.js 14 (App Router) + TypeScript + Tailwind CSS
-- LLM au choix : **Groq** (Llama 3.3 70B, gratuit, par défaut) ou **Anthropic Claude** (payant, optionnel)
-- `@xenova/transformers` (`all-MiniLM-L6-v2`) pour les embeddings locaux — 384 dimensions
-- Supabase + pgvector pour le stockage vectoriel
-- `pdf-parse` et `mammoth` pour l'extraction
-- `react-pdf` pour la prévisualisation
-- Vitest pour les tests
+---
 
-## Setup
+## How it works
+
+```
+┌──────────────┐   ┌───────────┐   ┌────────────────┐   ┌──────────────┐
+│ Upload PDF/  │──▶│  Extract  │──▶│  Chunk (≈500   │──▶│   Embed      │
+│  DOCX / TXT  │   │   text    │   │  tok, overlap) │   │ (local model)│
+└──────────────┘   └───────────┘   └────────────────┘   └──────┬───────┘
+                                                               │
+                                                               ▼
+                                                        ┌──────────────┐
+                                                        │  pgvector    │
+                                                        │  (Supabase)  │
+                                                        └──────┬───────┘
+                                                               │
+┌──────────────┐   ┌───────────┐   ┌────────────────┐   ┌──────▼───────┐
+│  User asks   │──▶│  Embed    │──▶│  Cosine top-k  │──▶│  Streamed    │
+│  a question  │   │  question │   │   retrieval    │   │  LLM answer  │
+└──────────────┘   └───────────┘   └────────────────┘   │ + citations  │
+                                                        └──────────────┘
+```
+
+The LLM is instructed to answer **only** from the retrieved chunks. Retrieved passages are returned with the response so the UI can display and highlight the source.
+
+---
+
+## Tech stack
+
+| Layer            | Choice                                                                 |
+| ---------------- | ---------------------------------------------------------------------- |
+| Framework        | Next.js 14 (App Router) + TypeScript                                   |
+| Styling          | Tailwind CSS                                                           |
+| LLM              | Groq (Llama 3.3 70B, default) or Anthropic Claude                      |
+| Embeddings       | `@xenova/transformers` — `all-MiniLM-L6-v2`, 384-d, runs in Node       |
+| Vector store     | Supabase Postgres + `pgvector`                                         |
+| Text extraction  | `pdf-parse` (PDF), `mammoth` (DOCX)                                    |
+| PDF preview      | `react-pdf`                                                            |
+| Validation       | `zod`                                                                  |
+| Tests            | Vitest                                                                 |
+
+---
+
+## Getting started
+
+### Prerequisites
+
+- Node.js 18+
+- A Supabase project (free tier is fine)
+- A Groq API key — [console.groq.com/keys](https://console.groq.com/keys) *(or an Anthropic key if you prefer Claude)*
+
+### Install
 
 ```bash
 npm install
 cp .env.example .env.local
-# remplir les variables (voir .env.example)
+```
+
+### Configure Supabase
+
+In the Supabase SQL editor, run:
+
+```
+supabase/schema.sql
+```
+
+This enables the `pgvector` extension and creates the `documents` / `chunks` tables plus the similarity-search function.
+
+### Run
+
+```bash
 npm run dev
 ```
 
-Puis http://localhost:3000
+Open [http://localhost:3000](http://localhost:3000).
 
-### Variables d'environnement
+---
 
-| Variable                    | Description                                                            |
-| --------------------------- | ---------------------------------------------------------------------- |
-| `GROQ_API_KEY`              | Clé Groq (console.groq.com/keys) — provider par défaut, tier gratuit   |
-| `GROQ_MODEL`                | Modèle Groq, défaut `llama-3.3-70b-versatile`                          |
-| `LLM_PROVIDER`              | `groq` (défaut) ou `anthropic`                                         |
-| `ANTHROPIC_API_KEY`         | Requis uniquement si `LLM_PROVIDER=anthropic`                          |
-| `SUPABASE_URL`              | URL du projet Supabase                                                 |
-| `SUPABASE_SERVICE_ROLE_KEY` | Clé service role (backend uniquement, jamais exposée)                  |
+## Environment variables
 
-### Setup Supabase / pgvector
+| Variable                    | Required                    | Description                                                     |
+| --------------------------- | --------------------------- | --------------------------------------------------------------- |
+| `GROQ_API_KEY`              | If `LLM_PROVIDER=groq`      | Groq API key                                                    |
+| `GROQ_MODEL`                | No                          | Default `llama-3.3-70b-versatile`                               |
+| `LLM_PROVIDER`              | No                          | `groq` (default) or `anthropic`                                 |
+| `ANTHROPIC_API_KEY`         | If `LLM_PROVIDER=anthropic` | Anthropic API key                                               |
+| `ANTHROPIC_MODEL`           | No                          | Default `claude-sonnet-4-6`                                     |
+| `SUPABASE_URL`              | Yes                         | Project URL                                                     |
+| `SUPABASE_SERVICE_ROLE_KEY` | Yes                         | Service role key — **backend only, never expose to the client** |
+| `EMBEDDING_MODEL`           | No                          | Default `Xenova/all-MiniLM-L6-v2`                               |
 
-Dans le SQL editor Supabase, exécute `supabase/schema.sql`.
+---
 
-## Tests
+## Scripts
 
-```bash
-npm test
-```
+| Command             | What it does                     |
+| ------------------- | -------------------------------- |
+| `npm run dev`       | Start the dev server             |
+| `npm run build`     | Production build                 |
+| `npm run start`     | Run the production build         |
+| `npm run lint`      | Lint                             |
+| `npm test`          | Run the test suite once (Vitest) |
+| `npm run test:watch`| Vitest in watch mode             |
 
-## Architecture
+---
+
+## Project structure
 
 ```
 src/
-  app/
-    api/
-      upload/route.ts       # upload + extraction + chunking + embeddings + stockage
-      chat/route.ts         # retrieval + streaming Claude
-      summary/route.ts      # résumé du document
-    page.tsx                # UI principale (upload + chat + preview)
-  lib/
-    extract.ts              # extraction texte PDF/DOCX/TXT
-    chunk.ts                # découpage en chunks avec overlap
-    embeddings.ts           # embeddings locaux via transformers.js
-    supabase.ts             # client Supabase
-    claude.ts               # client Anthropic
-    rag.ts                  # pipeline retrieval
-  components/
-    UploadZone.tsx
-    Chat.tsx
-    PdfPreview.tsx
+├── app/
+│   ├── api/
+│   │   ├── upload/route.ts    # extract → chunk → embed → store
+│   │   ├── chat/route.ts      # retrieval + streamed LLM response
+│   │   └── summary/route.ts   # document summary
+│   └── page.tsx               # upload + chat + PDF preview
+├── lib/
+│   ├── extract.ts             # PDF/DOCX/TXT text extraction
+│   ├── chunk.ts               # chunking with overlap
+│   ├── embeddings.ts          # local embeddings (transformers.js)
+│   ├── rag.ts                 # retrieval pipeline
+│   ├── llm.ts                 # provider-agnostic LLM client (Groq / Anthropic)
+│   └── supabase.ts            # Supabase client
+└── components/
+    ├── UploadZone.tsx
+    ├── Chat.tsx
+    └── PdfPreview.tsx
+
+supabase/
+└── schema.sql                 # pgvector + tables + search function
+
+tests/                         # Vitest specs
 ```
 
-## Licence
+---
+
+## Design notes
+
+- **The document is never sent whole to the LLM.** Every question triggers a fresh retrieval; only the top-k relevant chunks reach the model.
+- **API key never touches the browser.** All LLM calls go through Next.js API routes.
+- **Fallback on empty retrieval.** If no chunk clears the similarity threshold, the app responds *"I couldn't find this information in the document"* rather than hallucinating.
+
+---
+
+## Deployment
+
+- **Frontend + API** — Vercel (one click; the App Router API handles server work)
+- **Database + vector store** — Supabase
+
+Set the same environment variables in your Vercel project settings.
+
+---
+
+## License
 
 MIT
